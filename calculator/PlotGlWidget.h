@@ -18,6 +18,7 @@ class PlotGlWidget : public QOpenGLWidget, protected QOpenGLFunctions
 public:
     explicit PlotGlWidget(QWidget* parent = nullptr);
     ~PlotGlWidget();
+    void setSinPrevValue(bool value);
 
 protected:
     // Core OpenGL overrides
@@ -36,17 +37,20 @@ private:
     QOpenGLShaderProgram axesProgram;
     QOpenGLBuffer vbo;
     QOpenGLBuffer axesVbo;
+    QMatrix4x4 viewMatrix;
     std::vector<float> functionPoints;
     int pointCount = 0;
     float zoomFactor = 1.0f;
     float xOffset = 0.0f;
     float yOffset = 0.0f;
+    bool sin_prev_value = true;
     QPoint lastMousePos;
 
     void generateSineWave();
     void createAxes();
-    void drawScaleMarkers(QPainter& painter); // Draw scale markers and labels
+    void drawScaleMarkers(QPainter& painter, const QMatrix4x4& transform); // Draw scale markers and labels
     float calculateStepSize(float range) const; // Calculate optimal step size for scale markers
+    QPointF screenToWorld(const QPoint& screenPos) const;
 };
 
 #endif // PLOTGLWIDGET_H

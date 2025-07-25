@@ -20,9 +20,11 @@ public:
     CalcWindow(QWidget *parent = nullptr);
     ~CalcWindow();
 
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+
 private:
     Ui::CalcWindow *ui;
-    void updateBackspaceButton();
 
 private slots:
     void digits_numbers();
@@ -33,5 +35,8 @@ private slots:
     void on_bt_plus_minus_clicked();
     void math_signal();
     void on_bt_comma_clicked();
+    void on_bt_sincos_clicked();
+    void updateBackspaceButton();
+    void on_bt_mode_clicked();
 };
 #endif // CALCWINDOW_H

@@ -1,12 +1,18 @@
 #include "calcwindow.h"
 #include "./ui_calcwindow.h"
 #include "cmath"
+#include "QToolButton"
+#include "QPixmap"
 
 static bool equaled;
 static bool operated;
 double prev_value;
 static bool exist_prev_value;
 static bool printed;
+static bool sin_prev_value;
+static bool calc_mode;
+static bool polynomial_mode;
+
 
 CalcWindow::CalcWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -29,18 +35,66 @@ CalcWindow::CalcWindow(QWidget *parent)
     connect(ui->bt_divide,SIGNAL(clicked()), this, SLOT(math_signal()));
     connect(ui->bt_multiply,SIGNAL(clicked()), this, SLOT(math_signal()));
     connect(ui->bt_sqrt,SIGNAL(clicked()), this, SLOT(math_signal()));
+    connect(ui->bt_sincos,SIGNAL(clicked()), this, SLOT(digits_numbers()));
 
+    calc_mode = false;
+    polynomial_mode = false;
+    sin_prev_value = true;
     exist_prev_value = false;
     equaled = false;
     operated = false;
     printed = false;
 
-    PlotGlWidget* PlGLWidget = new PlotGlWidget(this);
+    PlotGlWidget* PlGlWidget = new PlotGlWidget(this);
 
-    ui->verticalLayout->addWidget(PlGLWidget);
+    ui->verticalLayout->insertWidget(0, PlGlWidget);
 
-    PlGLWidget->setMinimumSize(200, 200);
+    PlGlWidget->setMinimumSize(200, 200);
+    PlGlWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
+    PlGlWidget->setVisible(false);
+
+    //QPixmap pixmap("switch_icon.jpg");
+    //QIcon ButtonIcon(pixmap);
+
+    QToolButton* bt_mode = new QToolButton(this);
+    //bt_mode->setIcon(ButtonIcon);
+    //bt_mode->setIconSize(pixmap.rect().size());
+    bt_mode->setText("☰");
+    bt_mode->setObjectName("bt_mode");
+    bt_mode->setStyleSheet(
+        "#bt_mode {"
+        "  background: #121212;"
+        "  color: white;"
+        "  font-size: 16px;"
+        "  border-radius: 4px;"
+        "}"
+        "#bt_mode:hover { background: #666; }"
+        "#bt_mode:pressed { background: #888; }"
+        );
+    int btnSize = qMin(width(), height()) / 8; // relative to the shorter side
+    bt_mode->setFixedSize(btnSize, btnSize);
+    bt_mode->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    connect(bt_mode, &QToolButton::clicked, this, &CalcWindow::on_bt_mode_clicked);
+
+    ui->gridLayout->addWidget(ui->bt_sincos, 0, 0);
+
+    ui->bt_sincos->setVisible(false);
 }
+
+
+void CalcWindow::resizeEvent(QResizeEvent* event) {
+    QMainWindow::resizeEvent(event);
+    QToolButton* bt_mode = findChild<QToolButton*>("bt_mode");
+
+    if (!bt_mode) {
+        return;
+    }
+
+    if (bt_mode) {
+        bt_mode->move(10, 10);
+    }
+}
+
 
 CalcWindow::~CalcWindow()
 {
@@ -209,17 +263,60 @@ void CalcWindow::math_operations(QString calc_symbol)
 }
 
 
-void CalcWindow::on_bt_fx_clicked()
+void CalcWindow::on_bt_mode_clicked()
 {
-    QString function = ui->func_line->text();
+    PlotGlWidget* PlGlWidget = findChild<PlotGlWidget*>();
 
-    if (function.startsWith("f(x)=")) {
-        function = function.mid(5);
+    if (!PlGlWidget) {
+        return;
     }
 
-    PlotGlWidget* glWidget = findChild<PlotGlWidget*>();
-    if (glWidget) {
-        //glWidget->plotFunction(function);
+    if (calc_mode) {
+        ui->calc_result->setVisible(true);
+        ui->prev_result->setVisible(true);
+        ui->bt_backspace->setVisible(true);
+        ui->bt_sincos->setVisible(false);
+        PlGlWidget->setVisible(false);
+        //ui->gridLayout->update();
+        calc_mode = false;
+    } else {
+        ui->calc_result->setVisible(false);
+        ui->prev_result->setVisible(false);
+        ui->bt_backspace->setVisible(false);
+        ui->bt_sincos->setVisible(true);
+        PlGlWidget->setVisible(true);
+        //ui->gridLayout->update();
+        calc_mode = true;
+    }
+}
+
+
+void CalcWindow::on_bt_fx_clicked()
+{
+    if (polynomial_mode) {
+        //enter cubic polynomial
+        polynomial_mode = false;
+    }
+    else {
+        //enter sincos mode
+        polynomial_mode = true;
+    }
+}
+
+
+void CalcWindow::on_bt_sincos_clicked()
+{
+    if (sin_prev_value) {
+        ui->bt_sincos->setText("cos(x)");
+        sin_prev_value = false;
+    } else {
+        ui->bt_sincos->setText("sin(x)");
+        sin_prev_value = true;
+    }
+
+    PlotGlWidget* plotWidget = findChild<PlotGlWidget*>();
+    if (plotWidget) {
+        plotWidget->setSinPrevValue(sin_prev_value);
     }
 }
 
