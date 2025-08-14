@@ -9,10 +9,8 @@ static bool operated;
 double prev_value;
 static bool exist_prev_value;
 static bool printed;
-static bool sin_prev_value;
+static int sin_prev_value;
 static bool calc_mode;
-static bool polynomial_mode;
-
 
 CalcWindow::CalcWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -36,29 +34,33 @@ CalcWindow::CalcWindow(QWidget *parent)
     connect(ui->bt_multiply,SIGNAL(clicked()), this, SLOT(math_signal()));
     connect(ui->bt_sqrt,SIGNAL(clicked()), this, SLOT(math_signal()));
     connect(ui->bt_sincos,SIGNAL(clicked()), this, SLOT(digits_numbers()));
+    connect(ui->bt_refresh, SIGNAL(clicked()), this, SLOT(on_bt_refresh_clicked()));
 
     calc_mode = false;
-    polynomial_mode = false;
-    sin_prev_value = true;
+    sin_prev_value = 1;
     exist_prev_value = false;
     equaled = false;
     operated = false;
     printed = false;
 
     PlotGlWidget* PlGlWidget = new PlotGlWidget(this);
-
     ui->verticalLayout->insertWidget(0, PlGlWidget);
-
     PlGlWidget->setMinimumSize(200, 200);
     PlGlWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
-    PlGlWidget->setVisible(false);
 
-    //QPixmap pixmap("switch_icon.jpg");
-    //QIcon ButtonIcon(pixmap);
+    // Устанавливаем начальные значения для спинбоксов
+    ui->dsbox_a->setValue(1.0);
+    ui->dsbox_b->setValue(0.0);
+    ui->dsbox_c->setValue(0.0);
+    ui->dsbox_d->setValue(0.0);
+
+    // Подключаем сигналы изменения значений спинбоксов к обновлению графика
+    connect(ui->dsbox_a, &QDoubleSpinBox::valueChanged, this, &CalcWindow::updateGraph);
+    connect(ui->dsbox_b, &QDoubleSpinBox::valueChanged, this, &CalcWindow::updateGraph);
+    connect(ui->dsbox_c, &QDoubleSpinBox::valueChanged, this, &CalcWindow::updateGraph);
+    connect(ui->dsbox_d, &QDoubleSpinBox::valueChanged, this, &CalcWindow::updateGraph);
 
     QToolButton* bt_mode = new QToolButton(this);
-    //bt_mode->setIcon(ButtonIcon);
-    //bt_mode->setIconSize(pixmap.rect().size());
     bt_mode->setText("☰");
     bt_mode->setObjectName("bt_mode");
     bt_mode->setStyleSheet(
@@ -76,9 +78,26 @@ CalcWindow::CalcWindow(QWidget *parent)
     bt_mode->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     connect(bt_mode, &QToolButton::clicked, this, &CalcWindow::on_bt_mode_clicked);
 
-    ui->gridLayout->addWidget(ui->bt_sincos, 0, 0);
+    ui->gridLayout->addWidget(ui->bt_sincos, 0, 0, 1, 3);
+    ui->gridLayout->addWidget(ui->lbl_a, 1, 3);
+    ui->gridLayout->addWidget(ui->lbl_b, 2, 3);
+    ui->gridLayout->addWidget(ui->lbl_c, 3, 3);
+    ui->gridLayout->addWidget(ui->lbl_d, 4, 3);
 
-    ui->bt_sincos->setVisible(false);
+    //setting default calc_mode
+    ui->calc_result->show();
+    ui->prev_result->show();
+    ui->bt_backspace->show();
+    ui->bt_sincos->hide();
+    ui->dsbox_a->hide();
+    ui->dsbox_b->hide();
+    ui->dsbox_c->hide();
+    ui->dsbox_d->hide();
+    ui->lbl_a->hide();
+    ui->lbl_b->hide();
+    ui->lbl_c->hide();
+    ui->lbl_d->hide();
+    PlGlWidget->hide();
 }
 
 
@@ -272,51 +291,95 @@ void CalcWindow::on_bt_mode_clicked()
     }
 
     if (calc_mode) {
-        ui->calc_result->setVisible(true);
-        ui->prev_result->setVisible(true);
-        ui->bt_backspace->setVisible(true);
-        ui->bt_sincos->setVisible(false);
-        PlGlWidget->setVisible(false);
+        ui->calc_result->show();
+        ui->prev_result->show();
+        ui->bt_backspace->show();
+        ui->bt_sincos->hide();
+        ui->dsbox_a->hide();
+        ui->dsbox_b->hide();
+        ui->dsbox_c->hide();
+        ui->dsbox_d->hide();
+        ui->bt_divide->show();
+        ui->bt_equal->show();
+        ui->bt_minus->show();
+        ui->bt_multiply->show();
+        ui->bt_plus->show();
+        ui->bt_plus_minus->show();
+        ui->bt_sqrt->show();
+        ui->lbl_a->hide();
+        ui->lbl_b->hide();
+        ui->lbl_c->hide();
+        ui->lbl_d->hide();
+        PlGlWidget->hide();
         //ui->gridLayout->update();
         calc_mode = false;
     } else {
-        ui->calc_result->setVisible(false);
-        ui->prev_result->setVisible(false);
-        ui->bt_backspace->setVisible(false);
-        ui->bt_sincos->setVisible(true);
-        PlGlWidget->setVisible(true);
+        ui->calc_result->hide();
+        ui->prev_result->hide();
+        ui->bt_backspace->hide();
+        ui->bt_sincos->show();
+        ui->dsbox_a->show();
+        ui->dsbox_b->show();
+        ui->dsbox_c->show();
+        ui->dsbox_d->show();
+        ui->bt_divide->hide();
+        ui->bt_equal->hide();
+        ui->bt_minus->hide();
+        ui->bt_multiply->hide();
+        ui->bt_plus->hide();
+        ui->bt_plus_minus->hide();
+        ui->bt_sqrt->hide();
+        ui->lbl_a->show();
+        ui->lbl_b->show();
+        ui->lbl_c->show();
+        ui->lbl_d->show();
+        PlGlWidget->show();
         //ui->gridLayout->update();
         calc_mode = true;
     }
 }
 
 
-void CalcWindow::on_bt_fx_clicked()
+// Добавляем новую функцию для обновления графика
+void CalcWindow::updateGraph()
 {
-    if (polynomial_mode) {
-        //enter cubic polynomial
-        polynomial_mode = false;
-    }
-    else {
-        //enter sincos mode
-        polynomial_mode = true;
+    qDebug("updating graph");
+    PlotGlWidget* plotWidget = findChild<PlotGlWidget*>();
+    if (plotWidget) {
+        double a = ui->dsbox_a->value();
+        double b = ui->dsbox_b->value();
+        double c = ui->dsbox_c->value();
+        double d = ui->dsbox_d->value();
+
+        plotWidget->generateFunction(a, b, c, d, sin_prev_value);
     }
 }
 
+// Модифицируем функцию on_bt_refresh_clicked
+void CalcWindow::on_bt_refresh_clicked()
+{
+    ui->dsbox_a->setValue(1.00);
+    ui->dsbox_b->setValue(0.00);
+    ui->dsbox_c->setValue(0.00);
+    ui->dsbox_d->setValue(0.00);
+    updateGraph();
+}
 
+// Модифицируем функцию on_bt_sincos_clicked
 void CalcWindow::on_bt_sincos_clicked()
 {
-    if (sin_prev_value) {
+    if (sin_prev_value == 1) {
         ui->bt_sincos->setText("cos(x)");
-        sin_prev_value = false;
+        sin_prev_value = 2;
+        updateGraph();
+    } else if (sin_prev_value == 2) {
+        ui->bt_sincos->setText("ax³+bx²+cx+d");
+        sin_prev_value = 3;
+        updateGraph();
     } else {
         ui->bt_sincos->setText("sin(x)");
-        sin_prev_value = true;
-    }
-
-    PlotGlWidget* plotWidget = findChild<PlotGlWidget*>();
-    if (plotWidget) {
-        plotWidget->setSinPrevValue(sin_prev_value);
+        sin_prev_value = 1;
+        updateGraph();
     }
 }
 

@@ -29,7 +29,7 @@ private:
 private slots:
     void digits_numbers();
     void math_operations(QString calc_symbol);
-    void on_bt_fx_clicked();
+    void on_bt_refresh_clicked();
     void on_bt_equal_clicked();
     void on_bt_backspace_clicked();
     void on_bt_plus_minus_clicked();
@@ -38,5 +38,6 @@ private slots:
     void on_bt_sincos_clicked();
     void updateBackspaceButton();
     void on_bt_mode_clicked();
+    void updateGraph();
 };
 #endif // CALCWINDOW_H
