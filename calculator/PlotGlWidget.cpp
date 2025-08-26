@@ -34,6 +34,46 @@ PlotGlWidget::~PlotGlWidget()
     axesVbo.destroy();
 }
 
+
+void PlotGlWidget::createGrid()
+{
+    std::vector<float> gridVertices;
+
+    const int range = 100; // Диапазон от -100 до 100
+    const int step = 5;    // Шаг сетки
+
+    // Горизонтальные линии (параллельные оси X)
+    for (int y = -range; y <= range; y += step) {
+        if (y == 0) continue; // Пропускаем ось Y
+        gridVertices.push_back(-range);
+        gridVertices.push_back(static_cast<float>(y));
+        gridVertices.push_back(range);
+        gridVertices.push_back(static_cast<float>(y));
+    }
+
+    // Вертикальные линии (параллельные оси Y)
+    for (int x = -range; x <= range; x += step) {
+        if (x == 0) continue; // Пропускаем ось X
+        gridVertices.push_back(static_cast<float>(x));
+        gridVertices.push_back(-range);
+        gridVertices.push_back(static_cast<float>(x));
+        gridVertices.push_back(range);
+    }
+
+    // Создаем или пересоздаем VBO для сетки
+    if (!gridVbo.isCreated()) {
+        gridVbo.create();
+    }
+
+    gridVbo.bind();
+    gridVbo.allocate(gridVertices.data(), gridVertices.size() * sizeof(float));
+    gridVbo.release();
+
+    // Сохраняем количество вершин для отрисовки
+    gridVertexCount = gridVertices.size() / 2; // Каждая линия = 2 точки (4 координаты)
+}
+
+
 void PlotGlWidget::initializeGL()
 {
     initializeOpenGLFunctions();
@@ -80,6 +120,7 @@ void PlotGlWidget::initializeGL()
 
     generateFunction(1.0, 0.0, 0.0, 0.0, 1); // Инициализация с параметрами по умолчанию
     createAxes();
+    createGrid();
 }
 
 void PlotGlWidget::generateFunction(double a, double b, double c, double d, int sin_prev_value)
@@ -90,7 +131,7 @@ void PlotGlWidget::generateFunction(double a, double b, double c, double d, int 
     functionPoints.reserve(segments * 2);
 
     for (int i = 0; i < segments; ++i) {
-        float x = -2.0f * M_PI + 4.0f * M_PI * i / segments;
+        float x = -100.0f + 200.0f * i / segments;
         float y;
 
         switch(sin_prev_value) {
@@ -133,12 +174,12 @@ void PlotGlWidget::generateFunction(double a, double b, double c, double d, int 
 void PlotGlWidget::createAxes()
 {
     std::vector<float> axes = {
-        -10.0f, 0.0f, 10.0f, 0.0f,    // X axis
-        0.0f, -10.0f, 0.0f, 10.0f,     // Y axis
+        -100.0f, 0.0f, 100.0f, 0.0f,    // X axis
+        0.0f, -100.0f, 0.0f, 100.0f,     // Y axis
         9.5f, 0.5f, 10.0f, 0.0f,       // X arrow part 1
         9.5f, -0.5f, 10.0f, 0.0f,      // X arrow part 2
-        0.5f, 9.5f, 0.0f, 10.0f,       // Y arrow part 1
-        -0.5f, 9.5f, 0.0f, 10.0f       // Y arrow part 2
+        -0.5f, 9.5f, 0.0f, 10.0f,       // Y arrow part 1
+        0.5f, 9.5f, 0.0f, 10.0f       // Y arrow part 2
     };
 
     axesVbo.create();
@@ -151,6 +192,23 @@ void PlotGlWidget::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT);
 
+
+    if (gridVbo.isCreated() && gridVertexCount > 0) {
+        program.bind(); // ← Используем программу графика вместо axesProgram
+        program.setUniformValue("transform", viewMatrix);
+        program.setUniformValue("color", QVector4D(0.1f, 0.1f, 0.9f, 1.0f));
+
+        gridVbo.bind();
+        program.enableAttributeArray(0);
+        program.setAttributeBuffer(0, GL_FLOAT, 0, 2);
+
+        glDrawArrays(GL_LINES, 0, gridVertexCount);
+
+        gridVbo.release();
+        program.release();
+    }
+
+
     // Отрисовка осей
     axesProgram.bind();
     axesProgram.setUniformValue("transform", viewMatrix);
@@ -161,7 +219,7 @@ void PlotGlWidget::paintGL()
     // Рисуем оси
     glDrawArrays(GL_LINES, 0, 4);
     // Рисуем стрелки
-    glDrawArrays(GL_LINES, 4, 6);
+    glDrawArrays(GL_LINES, 4, 8);
 
     axesProgram.release();
 
@@ -231,13 +289,15 @@ void PlotGlWidget::wheelEvent(QWheelEvent* event)
     zoomFactor = qBound(0.01f, zoomFactor * zoom, 10.0f);
 
     QPointF mouseWorldAfter = screenToWorld(event->position().toPoint());
-    xOffset += mouseWorldBefore.x() - mouseWorldAfter.x();
-    yOffset += mouseWorldBefore.y() - mouseWorldAfter.y();
+    xOffset -= mouseWorldBefore.x() - mouseWorldAfter.x();
+    yOffset -= mouseWorldBefore.y() - mouseWorldAfter.y();
 
     // Обновляем матрицу вида
     viewMatrix.setToIdentity();
     viewMatrix.scale(zoomFactor, zoomFactor);
     viewMatrix.translate(xOffset, yOffset);
+    //viewMatrix.ortho(minX, maxX, minY, maxY, -1.0f, 1.0f);
+    update();
 
     update();
 }

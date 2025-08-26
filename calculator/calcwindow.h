@@ -5,6 +5,7 @@
 #include "cmath"
 #include <QOpenGLWidget>
 #include "PlotGlWidget.h"
+#include "QDoubleSpinBox"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -22,9 +23,16 @@ public:
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
     Ui::CalcWindow *ui;
+    void handleCalculatorInput(const QString& digit);
+    void handleCoefficientInput(const QString& digit);
+    QDoubleSpinBox* getCurrentCoefficientSpinBox();
+    void setActiveCoefficient(int coefficientIndex);
+    int currentCoefficient;
+    bool coefficientEdited;
 
 private slots:
     void digits_numbers();
@@ -39,5 +47,8 @@ private slots:
     void updateBackspaceButton();
     void on_bt_mode_clicked();
     void updateGraph();
+    void onCoefficientBackspaceClicked();
+    void onCoefficientCommaClicked();
+    void onCoefficientPlusMinusClicked();
 };
 #endif // CALCWINDOW_H

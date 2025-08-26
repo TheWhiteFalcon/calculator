@@ -11,6 +11,7 @@
 #include <QKeyEvent>
 #include <QPainter>
 #include <QMatrix4x4>
+#include <QPointF>
 
 class PlotGlWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
@@ -32,6 +33,11 @@ protected:
     void keyPressEvent(QKeyEvent* event) override;
 
 private:
+    QOpenGLBuffer gridVbo;
+    int gridVertexCount;
+
+    void createGrid();
+
     QOpenGLShaderProgram program;
     QOpenGLShaderProgram axesProgram;
     QOpenGLBuffer vbo;

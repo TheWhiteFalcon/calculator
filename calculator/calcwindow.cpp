@@ -15,8 +15,20 @@ static bool calc_mode;
 CalcWindow::CalcWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::CalcWindow)
+    , currentCoefficient(0)
+    , coefficientEdited(false)
 {
     ui->setupUi(this);
+
+    ui->lbl_a->installEventFilter(this);
+    ui->lbl_b->installEventFilter(this);
+    ui->lbl_c->installEventFilter(this);
+    ui->lbl_d->installEventFilter(this);
+
+    ui->lbl_a->setCursor(Qt::PointingHandCursor);
+    ui->lbl_b->setCursor(Qt::PointingHandCursor);
+    ui->lbl_c->setCursor(Qt::PointingHandCursor);
+    ui->lbl_d->setCursor(Qt::PointingHandCursor);
 
     connect(ui->bt_0,SIGNAL(clicked()), this, SLOT(digits_numbers()));
     connect(ui->bt_1,SIGNAL(clicked()), this, SLOT(digits_numbers()));
@@ -120,14 +132,49 @@ CalcWindow::~CalcWindow()
     delete ui;
 }
 
+
+
+bool CalcWindow::eventFilter(QObject *obj, QEvent *event)
+{
+    if (event->type() == QEvent::MouseButtonPress && calc_mode) {
+        if (obj == ui->lbl_a) {
+            setActiveCoefficient(0);
+            return true;
+        } else if (obj == ui->lbl_b) {
+            setActiveCoefficient(1);
+            return true;
+        } else if (obj == ui->lbl_c) {
+            setActiveCoefficient(2);
+            return true;
+        } else if (obj == ui->lbl_d) {
+            setActiveCoefficient(3);
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(obj, event);
+}
+
 void CalcWindow::digits_numbers()
 {
     QPushButton *button = (QPushButton *)sender();
+
+    if (calc_mode) {
+        // Режим графика - ввод в активный спинбокс
+        handleCoefficientInput(button->text());
+    } else {
+        // Режим калькулятора - обычная логика
+        handleCalculatorInput(button->text());
+    }
+    updateBackspaceButton();
+}
+
+void CalcWindow::handleCalculatorInput(const QString& digit)
+{
     double current_value;
     if(equaled)
     {
         ui->prev_result->setText("");
-        ui->calc_result->setText(button->text());
+        ui->calc_result->setText(digit);
         equaled = false;
         operated = false;
         exist_prev_value = false;
@@ -137,24 +184,117 @@ void CalcWindow::digits_numbers()
         current_value = (ui->calc_result->text()).toDouble();
         if(QString::number(current_value, 'g', 16).size() < 15)
         {
-
-            current_value = (ui->calc_result->text() + button->text()).toDouble();
+            current_value = (ui->calc_result->text() + digit).toDouble();
             qDebug() << current_value;
         }
         QString value_output = QString::number(current_value, 'g', 16);
-        qDebug() <<value_output;
+        qDebug() << value_output;
         operated = false;
-
         ui->calc_result->setText(value_output);
         printed = true;
     } else {
         prev_value = (ui->calc_result->text()).toDouble();
-        ui->calc_result->setText(button->text());
+        ui->calc_result->setText(digit);
         operated = false;
         printed = true;
     }
-    updateBackspaceButton();
 }
+
+void CalcWindow::handleCoefficientInput(const QString& digit)
+{
+    QDoubleSpinBox* currentSpinBox = getCurrentCoefficientSpinBox();
+    if (!currentSpinBox) return;
+
+    QString currentText = QString::number(currentSpinBox->value(), 'f', 6);
+
+    // Убираем лишние нули
+    currentText.remove(QRegularExpression("\\.0+$"));
+    currentText.remove(QRegularExpression("0+$"));
+    if (currentText.endsWith('.')) currentText.chop(1);
+
+    if (currentText == "0" || currentText.isEmpty()) {
+        currentText = digit;
+    } else {
+        currentText += digit;
+    }
+
+    currentSpinBox->setValue(currentText.toDouble());
+    updateGraph();
+}
+
+
+void CalcWindow::onCoefficientBackspaceClicked()
+{
+    if (!calc_mode) return;
+
+    QDoubleSpinBox* currentSpinBox = getCurrentCoefficientSpinBox();
+    if (!currentSpinBox) return;
+
+    QString currentText = QString::number(currentSpinBox->value(), 'f', 6);
+    currentText = currentText.replace(QRegularExpression("\\.?0+$"), "");
+
+    if (currentText.length() > 1) {
+        currentText.chop(1);
+        currentSpinBox->setValue(currentText.toDouble());
+    } else {
+        currentSpinBox->setValue(0.0);
+    }
+
+    updateGraph();
+}
+
+void CalcWindow::onCoefficientCommaClicked()
+{
+    if (!calc_mode) return;
+
+    QDoubleSpinBox* currentSpinBox = getCurrentCoefficientSpinBox();
+    if (!currentSpinBox) return;
+
+    QString currentText = QString::number(currentSpinBox->value(), 'f', 6);
+
+    if (!currentText.contains('.')) {
+        currentSpinBox->setValue(currentText.toDouble());
+        updateGraph();
+    }
+}
+
+void CalcWindow::onCoefficientPlusMinusClicked()
+{
+    if (!calc_mode) return;
+
+    QDoubleSpinBox* currentSpinBox = getCurrentCoefficientSpinBox();
+    if (!currentSpinBox) return;
+
+    currentSpinBox->setValue(-currentSpinBox->value());
+    updateGraph();
+}
+
+QDoubleSpinBox* CalcWindow::getCurrentCoefficientSpinBox()
+{
+    switch (currentCoefficient) {
+    case 0: return ui->dsbox_a;
+    case 1: return ui->dsbox_b;
+    case 2: return ui->dsbox_c;
+    case 3: return ui->dsbox_d;
+    default: return nullptr;
+    }
+}
+
+void CalcWindow::setActiveCoefficient(int coefficientIndex)
+{
+    currentCoefficient = coefficientIndex;
+    coefficientEdited = false;
+
+    // Визуальное выделение активного коэффициента
+    QString selectedStyle = "QLabel { color: red; font-weight: bold; }";
+    QString normalStyle = "";
+
+    ui->lbl_a->setStyleSheet(currentCoefficient == 0 ? selectedStyle : normalStyle);
+    ui->lbl_b->setStyleSheet(currentCoefficient == 1 ? selectedStyle : normalStyle);
+    ui->lbl_c->setStyleSheet(currentCoefficient == 2 ? selectedStyle : normalStyle);
+    ui->lbl_d->setStyleSheet(currentCoefficient == 3 ? selectedStyle : normalStyle);
+}
+
 
 void CalcWindow::math_signal(){
     QPushButton *button = (QPushButton *)sender();
@@ -430,17 +570,21 @@ void CalcWindow::updateBackspaceButton()
 
 void CalcWindow::on_bt_backspace_clicked()
 {
-
-    if (ui->bt_backspace->text() == "C") {
-        ui->calc_result->setText("0");
+    if (calc_mode) {
+        // Режим графика - используем backspace для коэффициентов
+        onCoefficientBackspaceClicked();
     } else {
-        ui->calc_result->setText("0");
-        ui->prev_result->setText("");
-        equaled = false;
-        exist_prev_value = false;
-        operated = false;
-    }
-    updateBackspaceButton();
+        // Режим калькулятора - стандартная логика
+        if (ui->bt_backspace->text() == "C") {
+            ui->calc_result->setText("0");
+        } else {
+            ui->calc_result->setText("0");
+            ui->prev_result->setText("");
+            equaled = false;
+            exist_prev_value = false;
+            operated = false;
+        }
+}
 }
 
 
@@ -461,4 +605,3 @@ void CalcWindow::on_bt_comma_clicked()
         ui->calc_result->setText(ui->calc_result->text() + '.');
     }
 }
-
