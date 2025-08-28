@@ -33,15 +33,15 @@ protected:
     void keyPressEvent(QKeyEvent* event) override;
 
 private:
-    QOpenGLBuffer gridVbo;
-    int gridVertexCount;
-
     void createGrid();
 
     QOpenGLShaderProgram program;
     QOpenGLShaderProgram axesProgram;
+    QOpenGLShaderProgram gridProgram;
     QOpenGLBuffer vbo;
     QOpenGLBuffer axesVbo;
+    QOpenGLBuffer gridVbo;
+    int gridVertexCount;
     QMatrix4x4 viewMatrix;
     std::vector<float> functionPoints;
 

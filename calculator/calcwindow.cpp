@@ -3,13 +3,14 @@
 #include "cmath"
 #include "QToolButton"
 #include "QPixmap"
+#include <QDebug>
 
 static bool equaled;
 static bool operated;
 double prev_value;
 static bool exist_prev_value;
 static bool printed;
-static int sin_prev_value;
+int sin_prev_value;
 static bool calc_mode;
 
 CalcWindow::CalcWindow(QWidget *parent)
@@ -45,7 +46,6 @@ CalcWindow::CalcWindow(QWidget *parent)
     connect(ui->bt_divide,SIGNAL(clicked()), this, SLOT(math_signal()));
     connect(ui->bt_multiply,SIGNAL(clicked()), this, SLOT(math_signal()));
     connect(ui->bt_sqrt,SIGNAL(clicked()), this, SLOT(math_signal()));
-    connect(ui->bt_sincos,SIGNAL(clicked()), this, SLOT(digits_numbers()));
     connect(ui->bt_refresh, SIGNAL(clicked()), this, SLOT(on_bt_refresh_clicked()));
 
     calc_mode = false;
@@ -508,19 +508,20 @@ void CalcWindow::on_bt_refresh_clicked()
 // Модифицируем функцию on_bt_sincos_clicked
 void CalcWindow::on_bt_sincos_clicked()
 {
+
+    qDebug() << "Button clicked! Current sin_prev_value:" << sin_prev_value;
     if (sin_prev_value == 1) {
         ui->bt_sincos->setText("cos(x)");
         sin_prev_value = 2;
-        updateGraph();
     } else if (sin_prev_value == 2) {
         ui->bt_sincos->setText("ax³+bx²+cx+d");
         sin_prev_value = 3;
-        updateGraph();
     } else {
         ui->bt_sincos->setText("sin(x)");
         sin_prev_value = 1;
-        updateGraph();
     }
+    updateGraph();
+
 }
 
 

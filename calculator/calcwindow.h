@@ -33,6 +33,7 @@ private:
     void setActiveCoefficient(int coefficientIndex);
     int currentCoefficient;
     bool coefficientEdited;
+    int sin_prev_value;
 
 private slots:
     void digits_numbers();

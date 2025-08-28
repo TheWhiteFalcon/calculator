@@ -32,6 +32,7 @@ PlotGlWidget::~PlotGlWidget()
 {
     vbo.destroy();
     axesVbo.destroy();
+    gridVbo.destroy();
 }
 
 
@@ -114,11 +115,27 @@ void PlotGlWidget::initializeGL()
                                         "}");
     axesProgram.link();
 
+    // Шейдер для сетки
+    gridProgram.addShaderFromSourceCode(QOpenGLShader::Vertex,
+                                        "#version 330 core\n"
+                                        "layout(location = 0) in vec2 position;\n"
+                                        "uniform mat4 transform;\n"
+                                        "void main() {\n"
+                                        "   gl_Position = transform * vec4(position, 0.0, 1.0);\n"
+                                        "}");
+    gridProgram.addShaderFromSourceCode(QOpenGLShader::Fragment,
+                                        "#version 330 core\n"
+                                        "out vec4 outColor;\n"
+                                        "void main() {\n"
+                                        "   outColor = vec4(0.5, 0.5, 0.5, 0.3);\n" // Серый цвет с прозрачностью
+                                        "}");
+    gridProgram.link();
+
     viewMatrix.setToIdentity();
     viewMatrix.scale(0.1f, 0.1f);
     zoomFactor = 0.1f;
 
-    generateFunction(1.0, 0.0, 0.0, 0.0, 1); // Инициализация с параметрами по умолчанию
+    generateFunction(1.0, 0.0, 0.0, 0.0, 1);
     createAxes();
     createGrid();
 }
@@ -137,15 +154,12 @@ void PlotGlWidget::generateFunction(double a, double b, double c, double d, int 
         switch(sin_prev_value) {
         case 1: // sin(x)
             y = sin(x) * a;
-            qDebug("sinus");
             break;
         case 2: // cos(x)
             y = cos(x) * a;
-            qDebug("cosinus");
             break;
         case 3: // polynomial
             y = a * x * x * x + b * x * x + c * x + d;
-            qDebug("poly");
             break;
         default:
             y = sin(x) * 1;
@@ -194,18 +208,17 @@ void PlotGlWidget::paintGL()
 
 
     if (gridVbo.isCreated() && gridVertexCount > 0) {
-        program.bind(); // ← Используем программу графика вместо axesProgram
-        program.setUniformValue("transform", viewMatrix);
-        program.setUniformValue("color", QVector4D(0.1f, 0.1f, 0.9f, 1.0f));
+        gridProgram.bind(); // ← Используем ШЕЙДЕР ДЛЯ СЕТКИ
+        gridProgram.setUniformValue("transform", viewMatrix);
 
         gridVbo.bind();
-        program.enableAttributeArray(0);
-        program.setAttributeBuffer(0, GL_FLOAT, 0, 2);
+        gridProgram.enableAttributeArray(0);
+        gridProgram.setAttributeBuffer(0, GL_FLOAT, 0, 2);
 
         glDrawArrays(GL_LINES, 0, gridVertexCount);
 
         gridVbo.release();
-        program.release();
+        gridProgram.release();
     }
 
 
