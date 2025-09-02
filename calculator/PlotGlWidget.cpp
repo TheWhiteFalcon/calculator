@@ -35,33 +35,31 @@ PlotGlWidget::~PlotGlWidget()
     gridVbo.destroy();
 }
 
-
 void PlotGlWidget::createGrid()
 {
     std::vector<float> gridVertices;
 
-    const int range = 100; // Диапазон от -100 до 100
-    const int step = 5;    // Шаг сетки
+    const int range = 100;
+    const int step = 5;
 
-    // Горизонтальные линии (параллельные оси X)
+    // Horizontal grid lines
     for (int y = -range; y <= range; y += step) {
-        if (y == 0) continue; // Пропускаем ось Y
+        if (y == 0) continue;
         gridVertices.push_back(-range);
         gridVertices.push_back(static_cast<float>(y));
         gridVertices.push_back(range);
         gridVertices.push_back(static_cast<float>(y));
     }
 
-    // Вертикальные линии (параллельные оси Y)
+    // Vertical grid lines
     for (int x = -range; x <= range; x += step) {
-        if (x == 0) continue; // Пропускаем ось X
+        if (x == 0) continue;
         gridVertices.push_back(static_cast<float>(x));
         gridVertices.push_back(-range);
         gridVertices.push_back(static_cast<float>(x));
         gridVertices.push_back(range);
     }
 
-    // Создаем или пересоздаем VBO для сетки
     if (!gridVbo.isCreated()) {
         gridVbo.create();
     }
@@ -70,17 +68,15 @@ void PlotGlWidget::createGrid()
     gridVbo.allocate(gridVertices.data(), gridVertices.size() * sizeof(float));
     gridVbo.release();
 
-    // Сохраняем количество вершин для отрисовки
-    gridVertexCount = gridVertices.size() / 2; // Каждая линия = 2 точки (4 координаты)
+    gridVertexCount = gridVertices.size() / 2;
 }
-
 
 void PlotGlWidget::initializeGL()
 {
     initializeOpenGLFunctions();
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
-    // Шейдер для графика
+    // Main graph shader program
     program.addShaderFromSourceCode(QOpenGLShader::Vertex,
                                     "#version 330 core\n"
                                     "layout(location = 0) in vec2 position;\n"
@@ -99,7 +95,7 @@ void PlotGlWidget::initializeGL()
                                     "}");
     program.link();
 
-    // Шейдер для осей
+    // Axes shader program
     axesProgram.addShaderFromSourceCode(QOpenGLShader::Vertex,
                                         "#version 330 core\n"
                                         "layout(location = 0) in vec2 position;\n"
@@ -115,7 +111,7 @@ void PlotGlWidget::initializeGL()
                                         "}");
     axesProgram.link();
 
-    // Шейдер для сетки
+    // Grid shader program
     gridProgram.addShaderFromSourceCode(QOpenGLShader::Vertex,
                                         "#version 330 core\n"
                                         "layout(location = 0) in vec2 position;\n"
@@ -127,7 +123,7 @@ void PlotGlWidget::initializeGL()
                                         "#version 330 core\n"
                                         "out vec4 outColor;\n"
                                         "void main() {\n"
-                                        "   outColor = vec4(0.5, 0.5, 0.5, 0.3);\n" // Серый цвет с прозрачностью
+                                        "   outColor = vec4(0.5, 0.5, 0.5, 0.3);\n"
                                         "}");
     gridProgram.link();
 
@@ -140,9 +136,8 @@ void PlotGlWidget::initializeGL()
     createGrid();
 }
 
-void PlotGlWidget::generateFunction(double a, double b, double c, double d, int sin_prev_value)
+void PlotGlWidget::generateFunction(double a, double b, double c, double d, int functionType)
 {
-    qDebug("Generating function");
     const int segments = 500;
     functionPoints.clear();
     functionPoints.reserve(segments * 2);
@@ -151,7 +146,7 @@ void PlotGlWidget::generateFunction(double a, double b, double c, double d, int 
         float x = -100.0f + 200.0f * i / segments;
         float y;
 
-        switch(sin_prev_value) {
+        switch(functionType) {
         case 1: // sin(x)
             y = sin(x) * a;
             break;
@@ -162,8 +157,7 @@ void PlotGlWidget::generateFunction(double a, double b, double c, double d, int 
             y = a * x * x * x + b * x * x + c * x + d;
             break;
         default:
-            y = sin(x) * 1;
-            qDebug("Default");
+            y = sin(x);
         }
 
         functionPoints.push_back(x);
@@ -176,24 +170,21 @@ void PlotGlWidget::generateFunction(double a, double b, double c, double d, int 
         vbo.create();
     }
 
-    if (vbo.isCreated()) {
-        vbo.bind();
-        vbo.allocate(functionPoints.data(), functionPoints.size() * sizeof(float));
-        vbo.release();
-    }
+    vbo.bind();
+    vbo.allocate(functionPoints.data(), functionPoints.size() * sizeof(float));
+    vbo.release();
     update();
 }
-
 
 void PlotGlWidget::createAxes()
 {
     std::vector<float> axes = {
         -100.0f, 0.0f, 100.0f, 0.0f,    // X axis
-        0.0f, -100.0f, 0.0f, 100.0f,     // Y axis
-        9.5f, 0.5f, 10.0f, 0.0f,       // X arrow part 1
-        9.5f, -0.5f, 10.0f, 0.0f,      // X arrow part 2
+        0.0f, -100.0f, 0.0f, 100.0f,    // Y axis
+        9.5f, 0.5f, 10.0f, 0.0f,        // X arrow part 1
+        9.5f, -0.5f, 10.0f, 0.0f,       // X arrow part 2
         -0.5f, 9.5f, 0.0f, 10.0f,       // Y arrow part 1
-        0.5f, 9.5f, 0.0f, 10.0f       // Y arrow part 2
+        0.5f, 9.5f, 0.0f, 10.0f         // Y arrow part 2
     };
 
     axesVbo.create();
@@ -206,9 +197,9 @@ void PlotGlWidget::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT);
 
-
+    // Draw grid
     if (gridVbo.isCreated() && gridVertexCount > 0) {
-        gridProgram.bind(); // ← Используем ШЕЙДЕР ДЛЯ СЕТКИ
+        gridProgram.bind();
         gridProgram.setUniformValue("transform", viewMatrix);
 
         gridVbo.bind();
@@ -221,22 +212,19 @@ void PlotGlWidget::paintGL()
         gridProgram.release();
     }
 
-
-    // Отрисовка осей
+    // Draw axes
     axesProgram.bind();
     axesProgram.setUniformValue("transform", viewMatrix);
     axesVbo.bind();
     axesProgram.enableAttributeArray(0);
     axesProgram.setAttributeBuffer(0, GL_FLOAT, 0, 2);
 
-    // Рисуем оси
     glDrawArrays(GL_LINES, 0, 4);
-    // Рисуем стрелки
     glDrawArrays(GL_LINES, 4, 8);
 
     axesProgram.release();
 
-    // Отрисовка графика
+    // Draw function graph
     program.bind();
     program.setUniformValue("transform", viewMatrix);
     vbo.bind();
@@ -247,12 +235,11 @@ void PlotGlWidget::paintGL()
     glLineWidth(1.0f);
     program.release();
 
-    // Отрисовка меток
+    // Draw labels
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.end();
 }
-
 
 float PlotGlWidget::calculateStepSize(float range) const
 {
@@ -284,7 +271,6 @@ void PlotGlWidget::mouseMoveEvent(QMouseEvent* event)
         xOffset += 2.0f * delta.x() / (width() * zoomFactor);
         yOffset -= 2.0f * delta.y() / (height() * zoomFactor);
 
-        // Обновляем матрицу вида
         viewMatrix.setToIdentity();
         viewMatrix.scale(zoomFactor, zoomFactor);
         viewMatrix.translate(xOffset, yOffset);
@@ -305,20 +291,15 @@ void PlotGlWidget::wheelEvent(QWheelEvent* event)
     xOffset -= mouseWorldBefore.x() - mouseWorldAfter.x();
     yOffset -= mouseWorldBefore.y() - mouseWorldAfter.y();
 
-    // Обновляем матрицу вида
     viewMatrix.setToIdentity();
     viewMatrix.scale(zoomFactor, zoomFactor);
     viewMatrix.translate(xOffset, yOffset);
-    //viewMatrix.ortho(minX, maxX, minY, maxY, -1.0f, 1.0f);
-    update();
-
     update();
 }
 
 void PlotGlWidget::keyPressEvent(QKeyEvent *event)
 {
     if (event->key() == Qt::Key_R) {
-        // Reset view on 'R' key
         zoomFactor = 1.0f;
         xOffset = 0.0f;
         yOffset = 0.0f;

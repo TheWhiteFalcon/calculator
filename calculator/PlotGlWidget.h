@@ -21,7 +21,7 @@ public:
     ~PlotGlWidget();
 
 public slots:
-    void generateFunction(double a, double b, double c, double d, int sin_prev_value);
+    void generateFunction(double a, double b, double c, double d, int functionType);
 
 protected:
     void initializeGL() override;
@@ -49,7 +49,7 @@ private:
     float zoomFactor = 1.0f;
     float xOffset = 0.0f;
     float yOffset = 0.0f;
-    int sin_prev_value;
+    int functionType;
     QPoint lastMousePos;
 
     void createAxes();

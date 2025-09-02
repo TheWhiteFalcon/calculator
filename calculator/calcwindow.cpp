@@ -10,7 +10,7 @@ static bool operated;
 double prev_value;
 static bool exist_prev_value;
 static bool printed;
-int sin_prev_value;
+int functionType;
 static bool calc_mode;
 
 CalcWindow::CalcWindow(QWidget *parent)
@@ -49,7 +49,7 @@ CalcWindow::CalcWindow(QWidget *parent)
     connect(ui->bt_refresh, SIGNAL(clicked()), this, SLOT(on_bt_refresh_clicked()));
 
     calc_mode = false;
-    sin_prev_value = 1;
+    functionType = 1;
     exist_prev_value = false;
     equaled = false;
     operated = false;
@@ -60,13 +60,13 @@ CalcWindow::CalcWindow(QWidget *parent)
     PlGlWidget->setMinimumSize(200, 200);
     PlGlWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
 
-    // Устанавливаем начальные значения для спинбоксов
+    // Set initial values for spinboxes
     ui->dsbox_a->setValue(1.0);
     ui->dsbox_b->setValue(0.0);
     ui->dsbox_c->setValue(0.0);
     ui->dsbox_d->setValue(0.0);
 
-    // Подключаем сигналы изменения значений спинбоксов к обновлению графика
+    // Connect spinbox value changes to graph updates
     connect(ui->dsbox_a, &QDoubleSpinBox::valueChanged, this, &CalcWindow::updateGraph);
     connect(ui->dsbox_b, &QDoubleSpinBox::valueChanged, this, &CalcWindow::updateGraph);
     connect(ui->dsbox_c, &QDoubleSpinBox::valueChanged, this, &CalcWindow::updateGraph);
@@ -85,7 +85,7 @@ CalcWindow::CalcWindow(QWidget *parent)
         "#bt_mode:hover { background: #666; }"
         "#bt_mode:pressed { background: #888; }"
         );
-    int btnSize = qMin(width(), height()) / 8; // relative to the shorter side
+    int btnSize = qMin(width(), height()) / 8;
     bt_mode->setFixedSize(btnSize, btnSize);
     bt_mode->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     connect(bt_mode, &QToolButton::clicked, this, &CalcWindow::on_bt_mode_clicked);
@@ -96,7 +96,7 @@ CalcWindow::CalcWindow(QWidget *parent)
     ui->gridLayout->addWidget(ui->lbl_c, 3, 3);
     ui->gridLayout->addWidget(ui->lbl_d, 4, 3);
 
-    //setting default calc_mode
+    // Set default calculator mode visibility
     ui->calc_result->show();
     ui->prev_result->show();
     ui->bt_backspace->show();
@@ -112,7 +112,6 @@ CalcWindow::CalcWindow(QWidget *parent)
     PlGlWidget->hide();
 }
 
-
 void CalcWindow::resizeEvent(QResizeEvent* event) {
     QMainWindow::resizeEvent(event);
     QToolButton* bt_mode = findChild<QToolButton*>("bt_mode");
@@ -126,13 +125,10 @@ void CalcWindow::resizeEvent(QResizeEvent* event) {
     }
 }
 
-
 CalcWindow::~CalcWindow()
 {
     delete ui;
 }
-
-
 
 bool CalcWindow::eventFilter(QObject *obj, QEvent *event)
 {
@@ -159,10 +155,8 @@ void CalcWindow::digits_numbers()
     QPushButton *button = (QPushButton *)sender();
 
     if (calc_mode) {
-        // Режим графика - ввод в активный спинбокс
         handleCoefficientInput(button->text());
     } else {
-        // Режим калькулятора - обычная логика
         handleCalculatorInput(button->text());
     }
     updateBackspaceButton();
@@ -207,7 +201,7 @@ void CalcWindow::handleCoefficientInput(const QString& digit)
 
     QString currentText = QString::number(currentSpinBox->value(), 'f', 6);
 
-    // Убираем лишние нули
+    // Remove trailing zeros
     currentText.remove(QRegularExpression("\\.0+$"));
     currentText.remove(QRegularExpression("0+$"));
     if (currentText.endsWith('.')) currentText.chop(1);
@@ -221,7 +215,6 @@ void CalcWindow::handleCoefficientInput(const QString& digit)
     currentSpinBox->setValue(currentText.toDouble());
     updateGraph();
 }
-
 
 void CalcWindow::onCoefficientBackspaceClicked()
 {
@@ -285,7 +278,7 @@ void CalcWindow::setActiveCoefficient(int coefficientIndex)
     currentCoefficient = coefficientIndex;
     coefficientEdited = false;
 
-    // Визуальное выделение активного коэффициента
+    // Visual highlighting of active coefficient
     QString selectedStyle = "QLabel { color: red; font-weight: bold; }";
     QString normalStyle = "";
 
@@ -295,7 +288,6 @@ void CalcWindow::setActiveCoefficient(int coefficientIndex)
     ui->lbl_d->setStyleSheet(currentCoefficient == 3 ? selectedStyle : normalStyle);
 }
 
-
 void CalcWindow::math_signal(){
     QPushButton *button = (QPushButton *)sender();
     math_operations(button->text());
@@ -303,7 +295,6 @@ void CalcWindow::math_signal(){
 
 void CalcWindow::math_operations(QString calc_symbol)
 {
-
     double current_value = (ui->calc_result->text()).toDouble();
     QString value_output;
     double inter_value;
@@ -421,7 +412,6 @@ void CalcWindow::math_operations(QString calc_symbol)
     updateBackspaceButton();
 }
 
-
 void CalcWindow::on_bt_mode_clicked()
 {
     PlotGlWidget* PlGlWidget = findChild<PlotGlWidget*>();
@@ -451,7 +441,6 @@ void CalcWindow::on_bt_mode_clicked()
         ui->lbl_c->hide();
         ui->lbl_d->hide();
         PlGlWidget->hide();
-        //ui->gridLayout->update();
         calc_mode = false;
     } else {
         ui->calc_result->hide();
@@ -474,13 +463,10 @@ void CalcWindow::on_bt_mode_clicked()
         ui->lbl_c->show();
         ui->lbl_d->show();
         PlGlWidget->show();
-        //ui->gridLayout->update();
         calc_mode = true;
     }
 }
 
-
-// Добавляем новую функцию для обновления графика
 void CalcWindow::updateGraph()
 {
     qDebug("updating graph");
@@ -491,11 +477,10 @@ void CalcWindow::updateGraph()
         double c = ui->dsbox_c->value();
         double d = ui->dsbox_d->value();
 
-        plotWidget->generateFunction(a, b, c, d, sin_prev_value);
+        plotWidget->generateFunction(a, b, c, d, functionType);
     }
 }
 
-// Модифицируем функцию on_bt_refresh_clicked
 void CalcWindow::on_bt_refresh_clicked()
 {
     ui->dsbox_a->setValue(1.00);
@@ -505,25 +490,21 @@ void CalcWindow::on_bt_refresh_clicked()
     updateGraph();
 }
 
-// Модифицируем функцию on_bt_sincos_clicked
 void CalcWindow::on_bt_sincos_clicked()
 {
-
-    qDebug() << "Button clicked! Current sin_prev_value:" << sin_prev_value;
-    if (sin_prev_value == 1) {
+    qDebug() << "Button clicked! Current functionType:" << functionType;
+    if (functionType == 1) {
         ui->bt_sincos->setText("cos(x)");
-        sin_prev_value = 2;
-    } else if (sin_prev_value == 2) {
+        functionType = 2;
+    } else if (functionType == 2) {
         ui->bt_sincos->setText("ax³+bx²+cx+d");
-        sin_prev_value = 3;
+        functionType = 3;
     } else {
         ui->bt_sincos->setText("sin(x)");
-        sin_prev_value = 1;
+        functionType = 1;
     }
     updateGraph();
-
 }
-
 
 void CalcWindow::on_bt_equal_clicked()
 {
@@ -541,7 +522,6 @@ void CalcWindow::on_bt_equal_clicked()
             math_operations(math_symb);
             qDebug() <<value_output;
             ui->prev_result->setText(value_output);
-
         }
         prev_value = ui->calc_result->text().toDouble();
         equaled = true;
@@ -556,7 +536,6 @@ void CalcWindow::on_bt_equal_clicked()
     updateBackspaceButton();
 }
 
-
 void CalcWindow::updateBackspaceButton()
 {
     qDebug() << ui->calc_result->text();
@@ -568,14 +547,11 @@ void CalcWindow::updateBackspaceButton()
     }
 }
 
-
 void CalcWindow::on_bt_backspace_clicked()
 {
     if (calc_mode) {
-        // Режим графика - используем backspace для коэффициентов
         onCoefficientBackspaceClicked();
     } else {
-        // Режим калькулятора - стандартная логика
         if (ui->bt_backspace->text() == "C") {
             ui->calc_result->setText("0");
         } else {
@@ -585,19 +561,17 @@ void CalcWindow::on_bt_backspace_clicked()
             exist_prev_value = false;
             operated = false;
         }
+    }
 }
-}
-
 
 void CalcWindow::on_bt_plus_minus_clicked()
 {
-    double current_value; //= (ui->calc_result->text()).toDouble();
-    QString value_output; //= Qstring::number(current_Value, 'g', 16);
+    double current_value;
+    QString value_output;
     current_value = (ui->calc_result->text()).toDouble() * (-1);
     value_output = QString::number(current_value, 'g', 16);
     ui->calc_result->setText(value_output);
 }
-
 
 void CalcWindow::on_bt_comma_clicked()
 {
